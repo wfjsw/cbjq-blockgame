@@ -112,7 +112,8 @@
          
           <div>
             <input type="button" value="计算完美方案" @click="calc">
-            <input type="button" style="margin-left: 10px;" value="一键计算" @click="calcFull">
+            <input type="button" style="margin-left: 10px;" value="一键回收并计算" @click="calcFull">
+            <input type="button" style="margin-right: 10px; float: right;" value="撤销所有回收" @click="resetRecycle">
           </div>
         </div>
 
@@ -377,6 +378,15 @@
             }
           }
           
+        },
+        resetRecycle() {
+          for (let index = 0; index < this.recycledNum.length; index++) {
+            const value = this.recycledNum[index];
+            while (this.recycledNum[index] > 0 ){
+              this.cancelRecycle(index)
+            }
+          }
+          this.calc()
         },
         recycle(index) {
           if (this.num[index] > 0 ){
