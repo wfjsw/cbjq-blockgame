@@ -143,6 +143,7 @@
           col: 6,
           board: [],
           num: new Array(9).fill(0),
+          // num: [1,1,1,2,2,2,2,1,0],
           // num: [6,1,1,2,2,2,2,1,0], 
           // num: [2,2,2,2,2,0,0,0,0], 
           recycledNum: new Array(9).fill(0),
@@ -179,7 +180,7 @@
           this.filter();
         },
         filter(requiredInfoIds) {
-          console.log('in filter');
+          // console.log('in filter');
           if(!this.res){
             return;
           }
@@ -187,7 +188,7 @@
           if(!requiredInfoIds){
             requiredInfoIds = this.selected.map((v,i)=>v?i+1:-1).filter(v => v !== -1);
           } 
-          console.log("filter array:",requiredInfoIds);
+          // console.log("filter array:",requiredInfoIds);
           if(requiredInfoIds.length == 0){
             this.selectResult = this.res;
             return;
@@ -214,6 +215,7 @@
           this.filter(requiredInfoIds);
         },
 
+        // 返回能够回收到的最多的9号断片的回收方案
         find9(recycledNum) {
           let num = Object.assign([], recycledNum);
           let max = 0;
@@ -284,12 +286,15 @@
             if (okResultList.length == 0) {
               // 找不到方案了，那就结束吧
               // console.log('path end', path.length, String(path));
+              // 这里的策略是尽可能找到最多的9号方块
+              // 如果当前的pathArr栈的长度（也就是能找到的9号数量）比目前的最大值还多，那说明这个路径更好
               if (pathArr.length>max) {
                 max = pathArr.length
                 maxPathArr = pathArr;
                 // console.log('max', max, String(pathArr));
               }
               // path.pop();
+              // 这层已经找不到方案了，因此return结束此层递归
               return;
             }
             for (let i = 0; i < okResultList.length; i++) {
@@ -310,59 +315,208 @@
           return maxPathArr;
         },
 
+        // 返回所有9号断片的回收方案
+        find9All(recycledNum) {
+          let num = Object.assign([], recycledNum);
+          // let max = 0;
+          // let maxPathArr = [];
+          let allPathArr = [];
+
+          // 计算组合数 C(9,5) 结果应该是固定的126种可能
+          let chooseResult = choose(Array.from({length:9}, (v,k) => k), 5);
+          // https://juejin.cn/post/6959102042279247909
+          function choose(arr, size) {
+            var allResult = [];
+            (function (arr, size, result) {
+                var arrLen = arr.length;
+                if (size > arrLen) {
+                    return;
+                }
+                if (size == arrLen) {
+                    allResult.push([].concat(result, arr))
+                } else {
+                    for (var i = 0; i < arrLen; i++) {
+                        var newResult = [].concat(result);
+                        newResult.push(arr[i]);
+
+                        if (size == 1) {
+                            allResult.push(newResult);
+                        } else {
+                            var newArr = [].concat(arr);
+                            newArr.splice(0, i + 1);
+                            arguments.callee(newArr, size - 1, newResult);
+                        }
+                    }
+                }
+            })(arr, size, []);
+            return allResult;
+          }
+          
+          // 递归查找  
+          recursionFind(num, [], 0);
+
+          /**
+           * 进行递归凑数查找9号碎片的函数
+           * @param {*} nowRecycleNum 可回收的num数组
+           * @param {*} pathArr 记录了回收结果的数组，也相当于是递归路径
+           * @param {*} layer 递归层数
+           */
+          function recursionFind(nowRecycleNum, pathArr, layer) {
+            layer++;
+            let okResultList = [];
+            for (let i = 0; i < chooseResult.length; i++) {
+              const result = chooseResult[i];
+              // console.log(result);
+              let flag = true;
+              for (let j = 0; j < result.length; j++) {
+                const index = result[j];
+                if (nowRecycleNum[index] <= 0 ) {
+                  // console.log('存在0，无法回收');
+                  flag = false;
+                  break;
+                }
+              }
+              if (flag) {
+                // 记录下来能回收的可能性
+                okResultList.push(result);
+                // break;
+              }
+            }
+            // console.log('这层的所有方案数量', layer, okResultList.length);
+            if (okResultList.length == 0) {
+              // 这层已经找不到方案了，因此return结束此层递归
+              return;
+            }
+            else {
+              // 这层仍有方案，则记录在allPathArr里面
+              for (let index = 0; index < okResultList.length; index++) {
+                const thisPath = okResultList[index];
+                // let newOne = [pathArr , thisPath];
+                let newOne = [].concat(pathArr);
+                newOne.push(thisPath);
+                allPathArr.push(newOne)  
+              }
+              // console.log(allPathArr);
+            }
+            // console.log('okResultList', layer, okResultList, pathArr);
+            for (let i = 0; i < okResultList.length; i++) {
+              const okResult = okResultList[i];
+              // 按照方案对nowRecycleNum执行删减
+              let nRN = [].concat(nowRecycleNum);
+              okResult.forEach(index => {
+                nRN[index]--;
+              });
+              let pa = JSON.parse(JSON.stringify(pathArr));
+              pa.push(okResult)
+              recursionFind(nRN, pa, layer);
+            }
+          }
+          
+          return allPathArr;
+        },
+
         calcFull() {
           // 一键回收并计算
           // 先尝试不回收，直接计算，如果能出结果就不进行回收
-          // 如果没结果，那就先找出目前能够凑出最多的9号回收方案，
-          // 之后逐渐增加回收9号的数量，再进行计算，直到有结果为止
-          // 如果凑出了最多的9号，但是仍然没有结果，则认为确实无结果
+          // 如果不能出结果，计算出所有的9号回收方案，依次尝试，直到出结果为止
+          // 如果均尝试过了，但没结果，则认为无解
          
+          // 先尝试直接计算，若有结果，直接return结束
           this.calc();
-          // console.log('DIRECT RESULT', this.selectResult.length);
           if (this.selectResult.length > 0 ) {
-            // 直接计算有结果，直接return结束
             return;
           } 
           else {
-            // 尝试回收出9号
-            // 先算出能凑出的最大9号数量方案maxPathArr
-            let maxPathArr = this.find9(this.num);
-            let max = maxPathArr.length;
-            console.log(`可以凑出的9号数量 ${max} | ${String(maxPathArr)}`);
-            // 制作this.recycledComponents
-            let recycledComponents = [];
-            maxPathArr.forEach(path => {
-              path = path.map((i)=>(i+1));
-              recycledComponents.push(path);
-            });
-            // 先按照1个9号的预算回收，试一遍，出结果了就直接return
-            // 之后按照2个9号的预算回收，试一遍，出结果就return
-            // 直到凑不出来更多的9号了，停止，表示失败
-            for (let i = 0; i < max; i++) {
-              console.log(`凑出 ${i+1} 个9号`);
-              let path = maxPathArr[i];
-              path.forEach(index => {
-                // 执行num--和recycle++
-                this.num[index]--;
-                this.recycledNum[index]++;
-              });
-              
-              // 显示出9号的组成
-              this.recycledComponents = [];
-              for (let j = 0; j < i+1; j++) {  
-                let path = maxPathArr[j];
-                path = path.map((i)=>(i+1));
-                this.recycledComponents.push(path);
+            // 计算出所有的9号回收方案
+            let allPathArr = this.find9All(this.num);
+            // console.log('ALL', allPathArr);
+            // 依次尝试，直到有calc计算结果为止
+            for (let index = 0; index < allPathArr.length; index++) {
+              const onePath = allPathArr[index];
+              // 按照这个方案进行回收
+              for (let j = 0; j < onePath.length; j++) {
+                const one9 = onePath[j];
+                one9.forEach(index => {
+                  // 执行num--和recycle++
+                  this.num[index]--;
+                  this.recycledNum[index]++;
+                });
+                // 对界面上的回收区进行更新
+                let one9ForView = one9.map((i)=>(i+1));
+                this.recycledComponents.push(one9ForView);
               }
 
+              // let recycledComponents = [];
+              // onePath.forEach(path => {
+              //   path = path.map((i)=>(i+1));
+              //   recycledComponents.push(path);
+              // });
+              // this.recycledComponents = recycledComponents;
+
+              
+              
               // 执行计算，看看有没有结果
               this.calc();
-              console.log('DIRECT RESULT', this.selectResult.length);
+              // console.log('DIRECT RESULT', this.selectResult.length);
               if (this.selectResult.length > 0 ) {
+                // console.log("SUCCESS", onePath);
                 // 有结果了，return结束
                 return;
+              } 
+              else {
+                // console.log('fail');
+                // 无结果，恢复num，recycleNum，recycledComponents
+                for (let j = 0; j < onePath.length; j++) {
+                  const one9 = onePath[j];
+                  one9.forEach(index => {
+                    // 执行num++和recycle--
+                    this.num[index]++;
+                    this.recycledNum[index]--;
+                  });
+                }
+                this.recycledComponents = [];
               }
             }
+
+
+            // 旧想法，先找出目前能够凑出最多的9号回收方案，
+            // 之后逐渐增加回收9号的数量，再进行计算，直到有结果为止
+            // let max = maxPathArr.length;
+            // console.log(`可以凑出的9号数量 ${max} | ${String(maxPathArr)}`);
+            // // 制作this.recycledComponents
+            // let recycledComponents = [];
+            // maxPathArr.forEach(path => {
+            //   path = path.map((i)=>(i+1));
+            //   recycledComponents.push(path);
+            // });
+            // // 先按照1个9号的预算回收，试一遍，出结果了就直接return
+            // // 之后按照2个9号的预算回收，试一遍，出结果就return
+            // // 直到凑不出来更多的9号了，停止，表示失败
+            // for (let i = 0; i < max; i++) {
+            //   console.log(`凑出 ${i+1} 个9号`);
+            //   let path = maxPathArr[i];
+            //   path.forEach(index => {
+            //     // 执行num--和recycle++
+            //     this.num[index]--;
+            //     this.recycledNum[index]++;
+            //   });
+              
+            //   // 显示出9号的组成
+            //   this.recycledComponents = [];
+            //   for (let j = 0; j < i+1; j++) {  
+            //     let path = maxPathArr[j];
+            //     path = path.map((i)=>(i+1));
+            //     this.recycledComponents.push(path);
+            //   }
+
+            //   // 执行计算，看看有没有结果
+            //   this.calc();
+            //   console.log('DIRECT RESULT', this.selectResult.length);
+            //   if (this.selectResult.length > 0 ) {
+            //     // 有结果了，return结束
+            //     return;
+            //   }
+            // }
           }
         },
         resetRecycle() {
