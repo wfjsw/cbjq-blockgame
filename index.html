@@ -6,11 +6,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>尘白禁区信源研析</title>
   <script src="https://cdn.bootcdn.net/ajax/libs/vue/3.2.47/vue.global.prod.min.js"></script>
-  <script src="./calc.min.js"></script>
+  <script src="./calc.js"></script>
 </head>
 
 <body>
-  <a href="https://space.bilibili.com/277401945" target="_blank">Bilibili 方形的块状代码</a>
+  原作者：<a href="https://space.bilibili.com/277401945" target="_blank">Bilibili 方形的块状代码</a>
   <div id="app">
     <p>行数：<input type="text" v-model="row" /></p>
     <p>列数：<input type="text" v-model="col" /></p>
@@ -106,6 +106,19 @@
               <hr />
             </div>
           </div>
+
+          <div
+          style="margin-top: 5px; 
+          margin-bottom: 5px; 
+          margin-right: 10px; 
+          border: dashed 2px; 
+          border-radius: 10px; 
+          padding: 5px;
+          ">
+            <p>【2023-09-24注】目前对于方块 10 和 11 的支持仅经过了简单测试</p>
+            <p>如果遇到关于方块 10 和 11 的 bug 可以带上出错的情况给我的 <a href="https://github.com/halozhy/cbjq">GitHub 分支仓库</a> 提 Issue</p>
+            <p>（或者在 <a href="https://www.bilibili.com/video/BV1hp4y1j75k/">BV1hp4y1j75k</a> 这个视频下面评论区带上出错的情况留言）</p>
+          </div>
          
           <div>
             <input type="button" value="计算完美方案" @click="calc">
@@ -142,17 +155,17 @@
           row: 5,
           col: 6,
           board: [],
-          num: new Array(9).fill(0),
+          num: new Array(11).fill(0),
           // num: [1,1,1,2,2,2,2,1,0],
           // num: [6,1,1,2,2,2,2,1,0], 
           // num: [2,2,2,2,2,0,0,0,0], 
-          recycledNum: new Array(9).fill(0),
+          recycledNum: new Array(11).fill(0),
           recycledComponents: new Array(0),
-          selected: new Array(9).fill(false),
+          selected: new Array(11).fill(false),
           res: false,
           selectResult: false,
           now: 0,
-          color: ['white', '#75C0FF', '#3B66CF', '#78ACC5', '#C8FAFD', '#FDFF00', '#4BFF00', '#FF9800', '#B9B24B', '#FF00AE']
+          color: ['white', '#75C0FF', '#3B66CF', '#78ACC5', '#C8FAFD', '#FDFF00', '#4BFF00', '#FF9800', '#B9B24B', '#FF00AE', '#FF00EE', '#acb7d5']
         }
       },
       methods: {

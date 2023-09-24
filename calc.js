@@ -109,7 +109,18 @@ const blocks = [
     [
       [9]
     ]
-  ]
+  ],
+  [
+    [
+      [10, 10]
+    ]
+  ],
+  [
+    [
+      [11, 0],
+      [11, 11]
+    ]
+  ],
 ];
 
 let m, n, a, l, res;
@@ -171,7 +182,7 @@ function dfs(p) {
     dfs(p + 1);
     return;
   }
-  for (let b = 0; b < 9; ++b) {
+  for (let b = 0; b < 11; ++b) {
     if (!l[b]) continue;
     for (let d = 0; d < blocks[b].length; ++d) {
       if (!canPlaceBlock(x, y, b, d)) continue;
