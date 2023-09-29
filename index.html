@@ -10,8 +10,38 @@
 </head>
 
 <body>
-  原作者：<a href="https://space.bilibili.com/277401945" target="_blank">Bilibili 方形的块状代码</a>
+  <div>
+    原作者：<a href="https://space.bilibili.com/277401945" target="_blank">Bilibili 方形的块状代码</a>
+  </div>
+  
   <div id="app">
+    <div>
+      
+      <!-- <input type="button" value="更新日志" @click="confirmBoard"> -->
+      <button v-if="cache" @click="changeCacheState(false)">缓存状态：开</button>
+      <button v-else @click="changeCacheState(true)">缓存状态：关</button>
+      <button style="margin-left: 5px;" @click="showCacheHelpDialog">❓</button>
+      
+      <dialog id="cacheHelpDialog" ref="cacheHelpDialog">
+        <div id="cacheHelpDialogDiv" style="padding: -20px;">
+          <p>【测试性功能】</p>
+          <p>遇到 bug 可以带上出错的情况于 <a href="https://github.com/halozhy/cbjq" target="_blank">GitHub 分支仓库</a> 或  <a href="https://www.bilibili.com/video/BV1hp4y1j75k/" target="_blank">BV1hp4y1j75k</a> 反馈</p>
+          <hr>
+          <p>（点击缓存状态按钮即可改变缓存状态）</p>
+          <p>
+            缓存状态为“开”时，当页面刷新，关闭或可见性被改变后，程序会将页面数据保存在浏览器的 LocalStorage 中
+          </p>
+          <p>
+            如果需要清除缓存数据，请将缓存状态改为“关”，即可清除
+          </p>
+        </div>
+        <div style="text-align: center;">
+
+          <button  @click="showCacheHelpDialog(false)">确认</button>
+        </div>
+      </dialog>
+
+    </div>
     <p>行数：<input type="text" v-model="row" /></p>
     <p>列数：<input type="text" v-model="col" /></p>
     <input type="button" value="确定" @click="confirmBoard">
@@ -34,7 +64,7 @@
                   必选
                 </div>
               </th>
-              <th>
+              <!-- <th>
                 <div style="margin-left: 0px;">
                   回收
                 </div>
@@ -48,17 +78,17 @@
                 <div style="margin-left: 0px;">
                   取消回收
                 </div>
-              </th>
+              </th> -->
             </tr>
             <tr v-for="(b, i) in num">
               <td>
                 方块{{ i + 1 }}个数：
-                <div v-if="i+1 === 9" style="display: inline-block;">
+                <!-- <div v-if="i+1 === 9" style="display: inline-block;">
                   {{ num[i] + recycledComponents.length}} = 
                       <input style="width: 100px;"  type="text" v-model.number="num[i]" />
                       + {{ recycledComponents.length }}
-                </div>
-                <div v-else style="display: inline-block;">
+                </div> -->
+                <div v-else style="display: inline; float: right;">
                   
                       <input type="text" v-model.number="num[i]" />
   
@@ -72,7 +102,7 @@
                   :title="'信源 ' + (i+1) + ' 必选'"
                   @click="select(i)"/>
               </td>
-              <td>
+              <!-- <td>
                 <Button type="" @click="recycle(i)">🗑️</Button>
               </td>
               <td style="vertical-align: middle; text-align: center;">
@@ -80,11 +110,11 @@
               </td>
               <td style="text-align: center;">
                 <Button type="" @click="cancelRecycle(i)">🗑️-1</Button>
-              </td>
+              </td> -->
             </tr>
           </table>
           
-          <div 
+          <!-- <div 
           style="margin-top: 5px; 
           margin-bottom: 5px; 
           margin-right: 10px; 
@@ -105,9 +135,9 @@
               <br>
               <hr />
             </div>
-          </div>
+          </div> -->
 
-          <div
+          <!-- <div
           style="margin-top: 5px; 
           margin-bottom: 5px; 
           margin-right: 10px; 
@@ -118,12 +148,13 @@
             <p>【2023-09-24注】目前对于方块 10 和 11 的支持仅经过了简单测试</p>
             <p>如果遇到关于方块 10 和 11 的 bug 可以带上出错的情况给我的 <a href="https://github.com/halozhy/cbjq">GitHub 分支仓库</a> 提 Issue</p>
             <p>（或者在 <a href="https://www.bilibili.com/video/BV1hp4y1j75k/">BV1hp4y1j75k</a> 这个视频下面评论区带上出错的情况留言）</p>
-          </div>
+          </div> -->
          
           <div>
             <input type="button" value="计算完美方案" @click="calc">
-            <input type="button" style="margin-left: 10px;" value="一键回收并计算" @click="calcFull">
-            <input type="button" style="margin-right: 10px; float: right;" value="撤销所有回收" @click="resetRecycle">
+            <!-- <input type="button" value="按照此结果扣除对应方块" @click="calcFull" style="margin-left: 10px;" > -->
+            <!-- <input type="button" style="margin-left: 10px;" value="一键回收并计算" @click="calcFull"> -->
+            <!-- <input type="button" style="margin-right: 10px; float: right;" value="撤销所有回收" @click="resetRecycle"> -->
           </div>
         </div>
 
@@ -145,7 +176,12 @@
           :style="{ 'background-color': color[c] }"
         >{{ c }}</div>
       </div>
+      <div>
+        <input type="button" value="按照此结果扣除对应方块" @click="decreaseBlock" >
+        <input type="button" value="撤销此次扣除"  style="margin-left: 10px;" @click="resetBlock" >
+      </div>
     </div>
+    
   </div>
   <script>
     const { createApp } = Vue
@@ -157,7 +193,8 @@
           board: [],
           num: new Array(11).fill(0),
           // num: [1,1,1,2,2,2,2,1,0],
-          // num: [6,1,1,2,2,2,2,1,0], 
+          // num: [6,1,1,2,2,2,2,1,1,1,1], 
+          numBackup: new Array(11).fill(0), 
           // num: [2,2,2,2,2,0,0,0,0], 
           recycledNum: new Array(11).fill(0),
           recycledComponents: new Array(0),
@@ -165,7 +202,9 @@
           res: false,
           selectResult: false,
           now: 0,
-          color: ['white', '#75C0FF', '#3B66CF', '#78ACC5', '#C8FAFD', '#FDFF00', '#4BFF00', '#FF9800', '#B9B24B', '#FF00AE', '#FF00EE', '#acb7d5']
+          cache: false,
+          canCloseCacheHelpDialog: true,
+          color: ['white', '#75C0FF', '#3B66CF', '#78ACC5', '#C8FAFD', '#FDFF00', '#4BFF00', '#FF9800', '#B9B24B', '#FF00AE', '#8A2BE2', '#FF00FF']
         }
       },
       methods: {
@@ -426,12 +465,166 @@
             this.recycledComponents.push(path);
           });
         },
+        showCacheHelpDialog(param) {
+     
+
+          const dialog = this.$refs.cacheHelpDialog
+          dialog.showModal()
+          let that = this
+          // let canCloseCacheHelpDialog = true
+          function dialogClickCallback() {
+            console.log("in dialogClickCallback", that.canCloseCacheHelpDialog);
+              if (that.canCloseCacheHelpDialog == false) {
+                console.log('不关闭modal，并重置状态量');
+                that.canCloseCacheHelpDialog = true
+              }
+              else{
+                console.log('正常关闭modal，并移除监听器');
+                dialog.close()
+                document.querySelector("#cacheHelpDialog").removeEventListener('click', dialogClickCallback);
+                document.querySelector("#cacheHelpDialogDiv").removeEventListener('click', dialogDivClickCallback);
+            }
+          }
+          
+          function dialogDivClickCallback(){
+            console.log('不能关闭modal，不能移除监听器');
+            that.canCloseCacheHelpDialog = false
+          }
+
         
+          if(param == false){
+            // this.canCloseCacheHelpDialog = true
+            dialogClickCallback()
+            return
+          }
+          else{
+            document.querySelector("#cacheHelpDialog").addEventListener('click', dialogClickCallback);
+            document.querySelector("#cacheHelpDialogDiv").addEventListener('click', dialogDivClickCallback);
+
+          }
+            
+          
+          
+        },
+
+        closeCacheHelpDialog(){
+          const dialog = this.$refs.cacheHelpDialog
+          dialog.close()
+          document.querySelector("#cacheHelpDialog").onclick = null
+          document.querySelector("#cacheHelpDialogDiv").onclick = null
+          // document.querySelector("#cacheHelpDialog").removeEventListener('click', dialogClickCallback);
+          // document.querySelector("#cacheHelpDialogDiv").removeEventListener('click', dialogDivClickCallback);
+        },
+        
+        saveData(){
+          if(this.cache === true) {
+            // deep copy
+            const data = {...this._.data}
+            delete data["res"]
+            delete data["selectResult"]
+            // console.log(data);
+            localStorage.setItem('data', JSON.stringify(data))
+          }
+        },
+
+        changeCacheState(param) {
+          if (param === true) {
+            this.cache = true
+            this.saveData()
+          }
+          else if(param === false){
+            let result = window.confirm("这会清空本地缓存的数据（当前页面上的内容按下确认后不会丢失），请确认")
+            if (result){
+              this.cache = false
+              localStorage.removeItem('data')
+            }
+          }
+        },
+
+        decreaseBlock(){
+          arr = [4,4,4,4,4,4,4,5,1,2,3]
+          arr_num= new Array(11).fill(0)
+          // console.log(this.res);
+          // 我要知道每个方块的个数，遍历一遍，然后把每个方块的格式
+          // console.log(this.sol);
+          for (let index = 0; index < this.sol.length; index++) {
+            const element = this.sol[index];
+            for (let j = 0; j < element.length; j++) {
+              const value = element[j];
+              arr_num[value-1]++;
+            }
+          }
+
+          // console.log(arr_num);
+          this.numBackup = [].concat(this.num)
+          for (let index = 0; index < arr_num.length; index++) {
+            const element = arr_num[index];
+            let one_num = element/arr[index]
+            // console.log(index+1, one_num);
+            this.num[index] = this.num[index] - one_num
+          }
+        },
+
+        resetBlock(){
+          
+          this.num = [].concat(this.numBackup)
+          // console.log(this.num);
+          // console.log(this.numBackup);
+        }
       },
       computed: {
         sol() {
           return this.selectResult[this.now]
         }
+      },
+      mounted(){
+        console.log('on mounted');
+        let storeData = JSON.parse(localStorage.getItem('data'))
+        console.log('read', storeData);
+        if (storeData!=null && storeData.cache === true) {
+          let vueData = this._.data
+          // console.log(vueData)
+          for (const key in vueData) {
+            if (Object.hasOwnProperty.call(vueData, key)) {
+              const value = vueData[key];
+              // console.log(key, value);
+              if (Object.hasOwnProperty.call(storeData, key)) {
+                this[key] = storeData[key]
+              }
+            }
+          }
+        }
+
+        this.numBackup = [].concat(this.num)
+        
+        document.addEventListener('visibilitychange', () => {
+          // console.log(document.visibilityState);
+          this.saveData()
+        })
+
+        window.addEventListener('beforeunload', () => {
+          // console.log(document.visibilityState);
+          this.saveData()
+        })
+      },
+      beforeunmounted(){
+        // this.saveData()
+      },
+      watch: {
+        // row: 5,
+        //   col: 6,
+        //   board: [],
+        //   num: new Array(11).fill(0),
+        //   selected: new Array(11).fill(false),
+        //   res: false,
+        //   selectResult: false,
+        //   now: 0,
+        //   cache: false,
+        //   canCloseCacheHelpDialog: true,
+        // row: function (newVal, oldVal) {
+        //   console.log(newVal);
+        //   console.log(this._.data);
+        // },
       }
     }).mount('#app')
   </script>
