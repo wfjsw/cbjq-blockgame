@@ -64,7 +64,7 @@
                   必选
                 </div>
               </th>
-              <!-- <th>
+              <th>
                 <div style="margin-left: 0px;">
                   回收
                 </div>
@@ -78,16 +78,16 @@
                 <div style="margin-left: 0px;">
                   取消回收
                 </div>
-              </th> -->
+              </th>
             </tr>
             <tr v-for="(b, i) in num">
               <td>
                 方块{{ i + 1 }}个数：
-                <!-- <div v-if="i+1 === 9" style="display: inline-block;">
+                <div v-if="i+1 === 9" style="display: inline-block;">
                   {{ num[i] + recycledComponents.length}} = 
                       <input style="width: 100px;"  type="text" v-model.number="num[i]" />
                       + {{ recycledComponents.length }}
-                </div> -->
+                </div>
                 <div v-else style="display: inline; float: right;">
                   
                       <input type="text" v-model.number="num[i]" />
@@ -102,7 +102,7 @@
                   :title="'信源 ' + (i+1) + ' 必选'"
                   @click="select(i)"/>
               </td>
-              <!-- <td>
+              <td>
                 <Button type="" @click="recycle(i)">🗑️</Button>
               </td>
               <td style="vertical-align: middle; text-align: center;">
@@ -110,11 +110,11 @@
               </td>
               <td style="text-align: center;">
                 <Button type="" @click="cancelRecycle(i)">🗑️-1</Button>
-              </td> -->
+              </td>
             </tr>
           </table>
           
-          <!-- <div 
+          <div 
           style="margin-top: 5px; 
           margin-bottom: 5px; 
           margin-right: 10px; 
@@ -135,7 +135,7 @@
               <br>
               <hr />
             </div>
-          </div> -->
+          </div>
 
           <!-- <div
           style="margin-top: 5px; 
@@ -153,8 +153,8 @@
           <div>
             <input type="button" value="计算完美方案" @click="calc">
             <!-- <input type="button" value="按照此结果扣除对应方块" @click="calcFull" style="margin-left: 10px;" > -->
-            <!-- <input type="button" style="margin-left: 10px;" value="一键回收并计算" @click="calcFull"> -->
-            <!-- <input type="button" style="margin-right: 10px; float: right;" value="撤销所有回收" @click="resetRecycle"> -->
+            <input type="button" style="margin-left: 10px;" value="一键回收并计算" @click="calcFull">
+            <input type="button" style="margin-right: 10px; float: right;" value="撤销所有回收" @click="resetRecycle">
           </div>
         </div>
 
@@ -192,7 +192,7 @@
           col: 6,
           board: [],
           num: new Array(11).fill(0),
-          // num: [1,1,1,2,2,2,2,1,0],
+          // num: [1,1,1,2,2,2,2,1,0,0,0],
           // num: [6,1,1,2,2,2,2,1,1,1,1], 
           numBackup: new Array(11).fill(0), 
           // num: [2,2,2,2,2,0,0,0,0], 
