@@ -20,7 +20,7 @@
       <!-- <input type="button" value="更新日志" @click="confirmBoard"> -->
       <button v-if="cache" @click="changeCacheState(false)">缓存状态：开</button>
       <button v-else @click="changeCacheState(true)">缓存状态：关</button>
-      <button style="margin-left: 5px;" @click="showCacheHelpDialog">❓</button>
+      <button style="margin-left: 5px;" @click="changeCacheHelpDialogVisible(true)">❓</button>
       
       <dialog id="cacheHelpDialog" ref="cacheHelpDialog">
         <div id="cacheHelpDialogDiv" style="padding: -20px;">
@@ -29,7 +29,10 @@
           <hr>
           <p>（点击缓存状态按钮即可改变缓存状态）</p>
           <p>
-            缓存状态为“开”时，当页面刷新，关闭或可见性被改变后，程序会将页面数据保存在浏览器的 LocalStorage 中
+            缓存状态为“开”时，当页面刷新，关闭或可见性被改变后，程序会将<b>页面数据</b>保存在浏览器的 LocalStorage 中
+          </p>
+          <p>
+            <b>页面数据主要包含：格子行列数据，各个方块个数，回收个数，但不包含计算得到的方案</b>（因为方案种类可能很多，以至于 LocalStorage 存不下）
           </p>
           <p>
             如果需要清除缓存数据，请将缓存状态改为“关”，即可清除
@@ -37,7 +40,7 @@
         </div>
         <div style="text-align: center;">
 
-          <button  @click="showCacheHelpDialog(false)">确认</button>
+          <button  @click="changeCacheHelpDialogVisible(false)">确认</button>
         </div>
       </dialog>
 
@@ -154,7 +157,7 @@
             <input type="button" value="计算完美方案" @click="calc">
             <!-- <input type="button" value="按照此结果扣除对应方块" @click="calcFull" style="margin-left: 10px;" > -->
             <input type="button" style="margin-left: 10px;" value="一键回收并计算" @click="calcFull">
-            <input type="button" style="margin-right: 10px; float: right;" value="撤销所有回收" @click="resetRecycle">
+            <input type="button" style="margin-right: 10px; float: right;" value="撤销所有回收" ref="resetRecycleBtn" @click="resetRecycle" disabled>
           </div>
         </div>
 
@@ -177,8 +180,8 @@
         >{{ c }}</div>
       </div>
       <div>
-        <input type="button" value="按照此结果扣除对应方块" @click="decreaseBlock" >
-        <input type="button" value="撤销此次扣除"  style="margin-left: 10px;" @click="resetBlock" >
+        <input type="button" value="按照此结果扣除对应方块" ref="decreaseBtn" @click="decreaseBlock" >
+        <input type="button" value="撤销此次扣除" ref="resetDecreaseBtn" style="margin-left: 10px;" @click="resetBlock" disabled>
       </div>
     </div>
     
@@ -191,13 +194,19 @@
           row: 5,
           col: 6,
           board: [],
+          // board: [[-1, -1, 0, 0], [-1, -1, -1, -1]],
           num: new Array(11).fill(0),
+          // num: [0,2,2,2,2,2,1,1,1,0,0],
+          // num: [2,2,2,2,2,2,2,1,0,0,0],
           // num: [1,1,1,2,2,2,2,1,0,0,0],
           // num: [6,1,1,2,2,2,2,1,1,1,1], 
+          // num: [2,2,2,2,2,0,0,0,0,0,0], 
           numBackup: new Array(11).fill(0), 
-          // num: [2,2,2,2,2,0,0,0,0], 
+          solBackup: new Array(11).fill(0), 
           recycledNum: new Array(11).fill(0),
           recycledComponents: new Array(0),
+          recycledComponentsBackup: new Array(0),
+          // isDecreased: false, // 表示有没有点击过“按照此结果扣除对应方块”按钮
           selected: new Array(11).fill(false),
           res: false,
           selectResult: false,
@@ -206,6 +215,18 @@
           canCloseCacheHelpDialog: true,
           color: ['white', '#75C0FF', '#3B66CF', '#78ACC5', '#C8FAFD', '#FDFF00', '#4BFF00', '#FF9800', '#B9B24B', '#FF00AE', '#8A2BE2', '#FF00FF']
         }
+      },
+      watch: {
+        recycledNum:{
+          handler(newVal, oldVal) {
+            // console.log(newVal);
+            
+        
+
+          },
+          deep: true
+        }
+        
       },
       methods: {
         confirmBoard() {
@@ -230,6 +251,18 @@
           this.res = Solve(this.board, num)
           this.now = 0
           this.filter();
+
+          // await nextTick()
+          if (this.res.length > 0) {
+            // 重置撤销前备份
+            this.solBackup = []
+            this.recycledComponentsBackup = []
+            // 重置扣除相关的两个按钮的状态
+            if (this.$refs.decreaseBtn != undefined) {
+              this.$refs.decreaseBtn.disabled = false
+              this.$refs.resetDecreaseBtn.disabled = true
+            }
+          }
         },
         filter(requiredInfoIds) {
           // console.log('in filter');
@@ -431,15 +464,31 @@
             }
           }
         },
-        resetRecycle() {
+
+        // resetRecycle() {
+        //   for (let index = 0; index < this.recycledNum.length; index++) {
+        //     const value = this.recycledNum[index];
+        //     while (this.recycledNum[index] > 0 ){
+        //       this.cancelRecycle(index)
+        //     }
+        //   }
+        //   this.calc()
+        // },
+
+        // 撤销所有回收
+        resetRecycle(){
           for (let index = 0; index < this.recycledNum.length; index++) {
             const value = this.recycledNum[index];
-            while (this.recycledNum[index] > 0 ){
-              this.cancelRecycle(index)
+            if (this.recycledNum[index] > 0 ){
+              this.num[index] = this.num[index] + this.recycledNum[index];
+              this.recycledNum[index] = 0;
             }
           }
-          this.calc()
+          this.recycledComponents = []
+          // this.calc()
         },
+
+        // 对index号方块进行回收
         recycle(index) {
           if (this.num[index] > 0 ){
             this.num[index] = this.num[index] - 1;
@@ -447,6 +496,8 @@
           }
           this.calcAfterRecycle();
         },
+
+        // 对index号方块取消回收
         cancelRecycle(index) {
           if (this.recycledNum[index] > 0 ){
             this.num[index] = this.num[index] + 1;
@@ -454,6 +505,8 @@
           }
           this.calcAfterRecycle();
         },
+
+        // 回收或取消回收后都会调用的一个函数
         calcAfterRecycle(){
           // 算出回收区中能凑出的最大9号数量方案maxPathArr
           let maxPathArr = this.find9Max(this.recycledNum);
@@ -465,21 +518,21 @@
             this.recycledComponents.push(path);
           });
         },
-        showCacheHelpDialog(param) {
-     
 
+        // 打开缓存状态的帮助对话框
+        changeCacheHelpDialogVisible(param) {
           const dialog = this.$refs.cacheHelpDialog
           dialog.showModal()
           let that = this
           // let canCloseCacheHelpDialog = true
           function dialogClickCallback() {
-            console.log("in dialogClickCallback", that.canCloseCacheHelpDialog);
+            // console.log("in dialogClickCallback", that.canCloseCacheHelpDialog);
               if (that.canCloseCacheHelpDialog == false) {
-                console.log('不关闭modal，并重置状态量');
+                // console.log('不关闭modal，并重置状态量');
                 that.canCloseCacheHelpDialog = true
               }
               else{
-                console.log('正常关闭modal，并移除监听器');
+                // console.log('正常关闭modal，并移除监听器');
                 dialog.close()
                 document.querySelector("#cacheHelpDialog").removeEventListener('click', dialogClickCallback);
                 document.querySelector("#cacheHelpDialogDiv").removeEventListener('click', dialogDivClickCallback);
@@ -487,7 +540,7 @@
           }
           
           function dialogDivClickCallback(){
-            console.log('不能关闭modal，不能移除监听器');
+            // console.log('不能关闭modal，不能移除监听器');
             that.canCloseCacheHelpDialog = false
           }
 
@@ -500,33 +553,30 @@
           else{
             document.querySelector("#cacheHelpDialog").addEventListener('click', dialogClickCallback);
             document.querySelector("#cacheHelpDialogDiv").addEventListener('click', dialogDivClickCallback);
-
           }
-            
-          
-          
         },
 
-        closeCacheHelpDialog(){
-          const dialog = this.$refs.cacheHelpDialog
-          dialog.close()
-          document.querySelector("#cacheHelpDialog").onclick = null
-          document.querySelector("#cacheHelpDialogDiv").onclick = null
-          // document.querySelector("#cacheHelpDialog").removeEventListener('click', dialogClickCallback);
-          // document.querySelector("#cacheHelpDialogDiv").removeEventListener('click', dialogDivClickCallback);
-        },
+        // closeCacheHelpDialog(){
+        //   const dialog = this.$refs.cacheHelpDialog
+        //   dialog.close()
+        //   document.querySelector("#cacheHelpDialog").onclick = null
+        //   document.querySelector("#cacheHelpDialogDiv").onclick = null
+        //   // document.querySelector("#cacheHelpDialog").removeEventListener('click', dialogClickCallback);
+        //   // document.querySelector("#cacheHelpDialogDiv").removeEventListener('click', dialogDivClickCallback);
+        // },
         
+        // 保存数据到本地localStorage
         saveData(){
           if(this.cache === true) {
             // deep copy
             const data = {...this._.data}
             delete data["res"]
             delete data["selectResult"]
-            // console.log(data);
             localStorage.setItem('data', JSON.stringify(data))
           }
         },
 
+        // 改变缓存状态
         changeCacheState(param) {
           if (param === true) {
             this.cache = true
@@ -541,12 +591,13 @@
           }
         },
 
-        decreaseBlock(){
+        // 按照当前方案扣除对应方块
+        decreaseBlock() {
+          // arr[index] 代表第index号方块占的格子数，这个是固定值
           arr = [4,4,4,4,4,4,4,5,1,2,3]
-          arr_num= new Array(11).fill(0)
-          // console.log(this.res);
-          // 我要知道每个方块的个数，遍历一遍，然后把每个方块的格式
-          // console.log(this.sol);
+          // arr_num[index] 代表当前方案下，第index号方块的所占的格子的个数
+          arr_num = new Array(11).fill(0)
+          // 得出每个方块的个数
           for (let index = 0; index < this.sol.length; index++) {
             const element = this.sol[index];
             for (let j = 0; j < element.length; j++) {
@@ -554,22 +605,118 @@
               arr_num[value-1]++;
             }
           }
-
-          // console.log(arr_num);
-          this.numBackup = [].concat(this.num)
+          // sol_num[index] 代表当前方案下，第index号方块的个数
+          sol_num = new Array(11).fill(0)
           for (let index = 0; index < arr_num.length; index++) {
-            const element = arr_num[index];
-            let one_num = element/arr[index]
-            // console.log(index+1, one_num);
-            this.num[index] = this.num[index] - one_num
+            sol_num[index] = arr_num[index]/arr[index]
           }
+          
+          // console.log(sol_num);
+          
+          // 由于结果算出来之后，num区域仍然是可编辑的
+          // 用户可能在此期间增加或减少了某个方块的数量，所以还是要验证一下能不能按照此方案扣除
+          flag = true
+          for (let index = 0; index < sol_num.length; index++) {
+            const sol_one_num = sol_num[index];
+            let my_one_num = this.num[index];
+            if (index+1 === 9) {
+              // 特殊处理9号方块
+              my_one_num = my_one_num + this.recycledComponents.length
+            }
+            if (my_one_num < sol_one_num) {
+              alert(`目前的方块 ${index+1} 个数为 ${my_one_num}，小于此方案要求的 ${sol_one_num} 个，无法执行扣除`)
+              flag = false
+              break
+            }
+          }
+          if (!flag) {
+            return
+          }
+
+          // 当前的sol_num数组备份到solBackup里面
+          this.solBackup = [].concat(sol_num)
+          // this.numBackup = [].concat(this.num)
+
+          // 遍历sol_num，得到当前方案下，每个方块的数量，并对num数组执行减去操作
+          for (let index = 0; index < sol_num.length; index++) {
+            let one_num = sol_num[index]
+            // console.log(index+1, one_num);
+            if (this.num[index] > 0) {
+              if (index+1 === 9 && this.num[index] < one_num) {
+                // 如果是9号方块，而且自己的9号少于需要的9号
+                // 说明自己填入的9号数量不够，为了不被减法减为负数，直接赋0
+                this.num[index] = 0
+
+                // 也说明此时需要备份 recycledComponents 回收方案数组
+                // 当前的recycledComponents数组备份到recycledComponentsBackup里面
+                this.recycledComponentsBackup = [].concat(this.recycledComponents)
+                
+                // 按照recycledComponents数组，扣除回收区recycledNum里的内容
+                for (let index = 0; index < this.recycledComponents.length; index++) {
+                  const component_arr = this.recycledComponents[index];
+                  // console.log(element);
+                  for (let j = 0; j < component_arr.length; j++) {
+                    let component_index = component_arr[j];
+                    // 数组里面读出来的index是用于显示的，已经加过1了，此处要减1再用
+                    component_index--;
+                    if (this.recycledNum[component_index] > 0) {
+                      this.recycledNum[component_index]--
+                    }
+                  }
+                }
+
+                this.recycledComponents = []
+              }
+              else{
+                this.num[index] = this.num[index] - one_num
+                this.recycledComponentsBackup = []
+              }
+            }
+          }
+
+          this.$refs.decreaseBtn.disabled = true
+          this.$refs.resetDecreaseBtn.disabled = false
         },
 
+        // 撤销此次方块扣除
         resetBlock(){
-          
-          this.num = [].concat(this.numBackup)
-          // console.log(this.num);
-          // console.log(this.numBackup);
+          // 根据solBackup恢复num，用户输入区
+          for (let index = 0; index < this.num.length; index++) {
+            if (index+1 === 9 && this.recycledComponentsBackup.length > 0) {
+              // 如果是9号方块，而且的备份回收方案数组大于0
+              // 说明之前用户填入的9号数量是不够的，不能简单粗暴直接把结果需要的9号数量都加回到num上面
+              // 而是先算出用户之前填入的9号数量，这个数量 = 结果中需要的9号数量 - 回收得到的9号数量
+              const user9Num = this.solBackup[index] - this.recycledComponentsBackup.length
+              // 之后把用户填入的9号数量加回到num数组上
+              this.num[index] = this.num[index] + user9Num
+
+              // 也说明此时需要恢复 recycledComponents 回收方案数组和 recycledNum 回收区
+              // 根据this.recycledComponentsBackup恢复回收方案数组recycledComponents
+              for (let index = 0; index < this.recycledComponentsBackup.length; index++) {
+                const component_arr = this.recycledComponentsBackup[index] 
+                this.recycledComponents.push(component_arr)
+              }
+              // 根据this.recycledComponentsBackup恢复回收区recycledNum
+              for (let index = 0; index < this.recycledComponentsBackup.length; index++) {
+                const component_arr = this.recycledComponentsBackup[index];
+                // console.log(element);
+                for (let j = 0; j < component_arr.length; j++) {
+                  let component_index = component_arr[j];
+                  component_index--;
+                  this.recycledNum[component_index]++
+                  
+                }
+              }
+           
+            }
+            else{
+              this.num[index] = this.num[index] + this.solBackup[index]
+            }
+          }
+
+
+          this.$refs.decreaseBtn.disabled = false
+          this.$refs.resetDecreaseBtn.disabled = true
         }
       },
       computed: {
@@ -579,6 +726,7 @@
       },
       mounted(){
         console.log('on mounted');
+        // 读取本地数据，看看有没有存储的数据，如果有，则恢复
         let storeData = JSON.parse(localStorage.getItem('data'))
         console.log('read', storeData);
         if (storeData!=null && storeData.cache === true) {
@@ -595,37 +743,29 @@
           }
         }
 
-        this.numBackup = [].concat(this.num)
+        // 对recycledNum回收区启动监听，如果回收区里面都是0，使得“撤销所有回收”按钮变为灰色
+        this.$watch('recycledNum', (newVal, oldVal) => {
+          this.$refs.resetRecycleBtn.disabled = true
+          for (let index = 0; index < newVal.length; index++) {
+            const element = newVal[index];
+            if (element > 0) {
+              this.$refs.resetRecycleBtn.disabled = false 
+              break
+            }
+          }
+        }, {deep:true})
         
+        // 监听页面的可见性变化和刷新事件，发生这些事件则及时保存数据至本地
         document.addEventListener('visibilitychange', () => {
-          // console.log(document.visibilityState);
           this.saveData()
         })
-
         window.addEventListener('beforeunload', () => {
-          // console.log(document.visibilityState);
           this.saveData()
         })
       },
       beforeunmounted(){
         // this.saveData()
       },
-      watch: {
-        // row: 5,
-        //   col: 6,
-        //   board: [],
-        //   num: new Array(11).fill(0),
-        //   selected: new Array(11).fill(false),
-        //   res: false,
-        //   selectResult: false,
-        //   now: 0,
-        //   cache: false,
-        //   canCloseCacheHelpDialog: true,
-        // row: function (newVal, oldVal) {
-        //   console.log(newVal);
-        //   console.log(this._.data);
-        // },
-      }
     }).mount('#app')
   </script>
   <style>
