@@ -197,6 +197,7 @@
           board: [],
           // board: [[-1, -1, 0, 0], [-1, -1, -1, -1]],
           num: new Array(11).fill(0),
+          // num: [6,3,8,9,9,5,5,0,1,0,0],
           // num: [0,2,2,2,2,2,1,1,1,0,0],
           // num: [2,2,2,2,2,2,2,1,0,0,0],
           // num: [1,1,1,2,2,2,2,1,0,0,0],
@@ -361,6 +362,11 @@
            * @param {*} layer 递归层数
            */
           function recursionFind(nowRecycleNum, pathArr, layer) {
+            // 如果回收方案超过1000种，就停止递归，否则会太容易因计算量过大而卡死崩溃
+            if (allPathArr.length >= 1000) {
+              return
+            }
+
             layer++;
             let okResultList = [];
             for (let i = 0; i < chooseResult.length; i++) {
