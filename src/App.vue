@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { solve } from "@/lib/calc";
 import { find9All, find9Max } from "@/lib/find9";
 import { BlockColor, BlockLen, TotalBlockNum } from "./constants/blocks" with {type: 'macro'};
+import { filter } from "./lib/filter";
 
 const row = ref(5);
 const col = ref(6);
@@ -45,46 +46,34 @@ function tuneBox(i: number, j: number) {
   board.value[i][j] = board.value[i][j] === -1 ? 0 : -1;
 }
 
-function filter(requiredInfoIds?: number[]) {
+async function performFilter() {
   if (res.value === null) {
     return;
   }
 
-  if (!requiredInfoIds) {
-    requiredInfoIds = selected.value
-      .map((v, i) => (v ? i + 1 : -1))
-      .filter((v) => v > -1);
-  }
+  const requiredIds = selected.value
+    .map((v, i) => (v ? i + 1 : -1))
+    .filter((v) => v > -1);
 
-  if (requiredInfoIds.length === 0) {
-    selectResult.value = res.value;
-    return;
-  }
+  const result = await filter(res.value, requiredIds, []);
 
-  selectResult.value = res.value.filter((result) =>
-    result.every((r) => r.every((v) => requiredInfoIds.includes(v)))
-  );
+  selectResult.value = result;
 }
+
+watch(selected, performFilter, {deep: true});
 
 async function calc() {
   const numCloned = [...num.value];
   numCloned[8] += recycledComponents.value.length;
   res.value = await solve(board.value, numCloned);
   now.value = 0;
-  filter();
+  await performFilter();
   if (res.value.length > 0) {
     solBackup.value = [];
     recycledComponentsBackup.value = [];
     decreaseButtonDisabled.value = false;
     resetDecreaseButtonDisabled.value = true;
   }
-}
-
-function select(index: number) {
-  let requiredInfoIds = selected.value
-    .map((v, i) => ((v && i !== index) || (!v && i === index) ? i + 1 : null))
-    .filter((v) => v !== null);
-  filter(requiredInfoIds);
 }
 
 function calcFull() {
@@ -297,7 +286,7 @@ function resetBlock() {
           target="_blank"
           rel="noopener"
           >Bilibili 方形的块状代码</a
-        >, 
+        >,
         <a
           href="https://github.com/CmdBlockZQG/cbjq"
           target="_blank"
@@ -312,7 +301,7 @@ function resetBlock() {
           target="_blank"
           rel="noopener"
           >Bilibili 届不到的光晕</a
-        >, 
+        >,
         <a href="https://github.com/halozhy/cbjq" target="_blank" rel="noopener"
           >halozhy/cbjq</a
         >
@@ -437,7 +426,6 @@ function resetBlock() {
                 type="checkbox"
                 v-model="selected[i]"
                 :title="'信源 ' + (i + 1) + ' 必选'"
-                @click="select(i)"
               />
             </td>
             <td class="text-center">
@@ -524,7 +512,10 @@ function resetBlock() {
       <p>方案数：{{ res.length }}</p>
       <p>方案数(filterd)：{{ selectResult?.length ?? 0 }} / {{ res.length }}</p>
     </div>
-    <div v-if="res && res.length > 0" class="flex flex-col gap-4 justify-center">
+    <div
+      v-if="res && res.length > 0"
+      class="flex flex-col gap-4 justify-center"
+    >
       <p>当前展示方案：{{ now + 1 }} / {{ res.length }}</p>
       <p>
         当前展示方案(filterd)：{{ now + 1 }} / {{ selectResult?.length ?? 0 }}
@@ -538,7 +529,7 @@ function resetBlock() {
         </button>
         <button
           class="bg-slate-200 px-12 py-3 rounded-md shadow-md"
-          @click="now < ((selectResult?.length ?? 0) - 1) && now++"
+          @click="now < (selectResult?.length ?? 0) - 1 && now++"
         >
           -&gt;
         </button>
@@ -558,7 +549,6 @@ function resetBlock() {
           </div>
         </div>
       </div>
-
 
       <div class="flex flex-row gap-6">
         <button
