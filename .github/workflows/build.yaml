@@ -3,10 +3,8 @@ name: Build and Publish
 on:
   push:
     branches:
-      - master
+      - main
   workflow_dispatch:
-  schedule: 
-    - cron: '30 15 * * *'
 
 jobs:
   build-and-publish:
