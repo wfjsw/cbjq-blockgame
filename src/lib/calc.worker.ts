@@ -41,7 +41,7 @@ function placeBlock(x: number, y: number, b: number, d: number, v: number, a: nu
   }
 }
 
-const MAX_DFS = 100000;
+const MAX_DFS = 10000000;
 
 function dfs(p: number, m: number, n: number, a: number[][], l: number[], res: number[][][]) {
   if (p === m * n) {
