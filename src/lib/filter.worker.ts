@@ -35,7 +35,7 @@ function filter(
                 .reduce((s, c) => s + c, 0),
             0
           );
-          return bPreferred - aPreferred;
+          return aPreferred - bPreferred;
         })
       : filtered;
   return sorted;

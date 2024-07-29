@@ -55,7 +55,11 @@ async function performFilter() {
     .map((v, i) => (v ? i + 1 : -1))
     .filter((v) => v > -1);
 
-  const result = await filter(res.value, requiredIds, []);
+  const preferredIds = Array.from(num.value.entries())
+    .map(([i, c]) => [i + 1, c]).sort((a, b) => b[1] - a[1])
+    .map(([i, _]) => i).filter(i => i !== 9);
+
+  const result = await filter(res.value, requiredIds, preferredIds);
 
   selectResult.value = result;
 }
