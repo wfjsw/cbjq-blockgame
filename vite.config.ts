@@ -11,7 +11,7 @@ export default defineConfig({
   build: {
     target: "esnext",
   },
-  plugins: [vue(), Macros()],
+  plugins: [Macros(), vue()],
   css: {
     postcss: {
       plugins: [tailwindcss()],

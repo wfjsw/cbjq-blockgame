@@ -11,7 +11,7 @@ const board = ref<number[][]>([]);
 const totalNum = TotalBlockNum;
 
 const num = ref<number[]>(Array.from({ length: totalNum }, () => 0));
-const numBackup = ref(Array.from({ length: totalNum }, () => 0));
+// const numBackup = ref(Array.from({ length: totalNum }, () => 0));
 const solBackup = ref(Array.from({ length: totalNum }, () => 0));
 const recycledNum = ref(Array.from({ length: totalNum }, () => 0));
 const recycledComponents = ref<number[][]>([]);
@@ -171,17 +171,17 @@ function calcAfterRecycle() {
   recycledComponents.value = maxPathArr.map(path => path.map(v => v + 1));
 }
 
-function changeCacheHelpDialogVisible(...args: unknown[]) {
-  console.log("changeCacheHelpDialogVisible not implemented");
-}
+// function changeCacheHelpDialogVisible(...args: unknown[]) {
+//   console.log("changeCacheHelpDialogVisible not implemented");
+// }
 
-function saveData() {
-  console.log("saveData not implemented");
-}
+// function saveData() {
+//   console.log("saveData not implemented");
+// }
 
-function changeCacheState(param: boolean) {
-  console.log("changeCacheState not implemented");
-}
+// function changeCacheState(param: boolean) {
+//   console.log("changeCacheState not implemented");
+// }
 
 // 按照当前方案扣除对应方块
 function decreaseBlock() {
@@ -410,7 +410,7 @@ function resetBlock() {
               <div>取消回收</div>
             </th>
           </tr>
-          <tr v-for="(b, i) in num">
+          <tr v-for="(_, i) in num">
             <td>
               <div class="flex w-full">
                 <div class="w-28">方块{{ i + 1 }}个数：</div>
@@ -467,10 +467,10 @@ function resetBlock() {
           {{ recycledComponents.length }} <br />
         </div>
         <div style="margin-top: 7px; margin-bottom: 5px">回收的方块9构成：</div>
-        <div v-for="(v, i) in recycledComponents">
+        <div v-for="(_, i) in recycledComponents">
           <div
             style="display: inline-block"
-            v-for="(v2, j) in recycledComponents[i]"
+            v-for="(v2, _) in recycledComponents[i]"
           >
             方块 {{ v2 }},&nbsp;
           </div>
