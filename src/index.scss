@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+a {
+    @apply text-blue-500;
+}
+
+.box {
+    box-sizing: content-box;
+    width: 48px;
+    height: 48px;
+    border: 1px black solid;
+    cursor: pointer;
+    border-collapse: collapse;
+}
+
+.input-table {
+    table, th, td {
+        @apply border-2 px-2 py-1 border-collapse;
+    }
+    input[type="checkbox"]{
+        @apply scale-150;
+    }
+} 
