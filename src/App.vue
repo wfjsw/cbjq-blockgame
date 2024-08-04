@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, ref, shallowRef, toRaw, watch } from "vue";
 import { solve } from "@/lib/calc";
 import { find9All, find9Max } from "@/lib/find9";
 import { BlockColor, BlockLen, TotalBlockNum } from "./constants/blocks" with {type: 'macro'};
@@ -20,8 +20,8 @@ const recycledComponentsBackup = ref<number[][]>([]);
 const selected = ref<(number[] | null)[]>(
   Array.from({ length: totalNum }, () => null)
 );
-const res = ref<number[][][] | null>(null);
-const selectResult = ref<number[][][] | null>(null);
+const res = shallowRef<number[][][] | null>(null);
+const selectResult = shallowRef<number[][][] | null>(null);
 const now = ref(0);
 // const cache = ref(false);
 // const canCloseCacheHelpDialog = ref(true);
@@ -47,19 +47,23 @@ function tuneBox(i: number, j: number) {
 }
 
 async function performFilter() {
-  if (res.value === null) {
+  const resolution = res.value?.slice();
+  const requiredSelection = selected.value?.slice();
+  const numList = num.value?.slice();
+  
+  if (!resolution) {
     return;
   }
 
-  const requiredIds = selected.value
+  const requiredIds = requiredSelection
     .map((v, i) => (v ? i + 1 : -1))
     .filter((v) => v > -1);
 
-  const preferredIds = Array.from(num.value.entries())
+  const preferredIds = Array.from(numList.entries())
     .map(([i, c]) => [i + 1, c]).sort((a, b) => b[1] - a[1])
     .map(([i, _]) => i).filter(i => i !== 9);
 
-  const result = await filter(res.value, requiredIds, preferredIds);
+  const result = await filter(toRaw(resolution), toRaw(requiredIds), toRaw(preferredIds));
 
   selectResult.value = result;
 }
@@ -67,11 +71,11 @@ async function performFilter() {
 watch(selected, performFilter, {deep: true});
 
 async function calc() {
-  const numCloned = [...num.value];
+  const numCloned = toRaw(num.value);
   numCloned[8] += recycledComponents.value.length;
   res.value = await solve(board.value, numCloned);
   now.value = 0;
-  await performFilter();
+  performFilter();
   if (res.value.length > 0) {
     solBackup.value = [];
     recycledComponentsBackup.value = [];
@@ -80,14 +84,14 @@ async function calc() {
   }
 }
 
-function calcFull() {
+async function calcFull() {
   // 一键回收并计算
   // 先尝试不回收，直接计算，如果能出结果就不进行回收
   // 如果不能出结果，计算出所有的9号回收方案，依次尝试，直到出结果为止
   // 如果均尝试过了，但没结果，则认为无解
 
   // 先尝试不回收，直接计算，若有结果，直接return结束
-  calc();
+  await calc();
 
   if (selectResult.value && selectResult.value.length > 0) {
     return;
@@ -103,11 +107,11 @@ function calcFull() {
       }
 
       const one9ForView = one9.map((v) => v + 1);
-      recycledComponents.value = [...recycledComponents.value, one9ForView];
+      recycledComponents.value = [...recycledComponents.value.slice(), one9ForView];
     }
 
     // 执行calc计算，看看有没有结果
-    calc();
+    await calc();
 
     if (selectResult.value && selectResult.value.length > 0) {
       // 有结果了，return结束
@@ -221,7 +225,7 @@ function decreaseBlock() {
         num.value[i] = 0;
         // 也说明此时需要备份 recycledComponents 回收方案数组
         // 当前的recycledComponents数组备份到recycledComponentsBackup里面
-        recycledComponentsBackup.value = [...recycledComponents.value];
+        recycledComponentsBackup.value = recycledComponents.value.slice();
         // 按照recycledComponents数组，扣除回收区recycledNum里的内容
         for (const componentArr of recycledComponents.value) {
           for (const component of componentArr) {
@@ -261,7 +265,7 @@ function resetBlock() {
       // 也说明此时需要恢复 recycledComponents 回收方案数组和 recycledNum 回收区
       // 根据this.recycledComponentsBackup恢复回收方案数组recycledComponents
 
-      recycledComponents.value = [...recycledComponents.value, ...recycledComponentsBackup.value];
+      recycledComponents.value = [...recycledComponents.value.slice(), ...recycledComponentsBackup.value.slice()];
 
       // 根据this.recycledComponentsBackup恢复回收区recycledNum
 
@@ -282,7 +286,7 @@ function resetBlock() {
 
 <template>
   <div class="p-5 flex flex-col gap-4 items-center">
-    <div class="flex flex-row flex-wrap gap-6">
+    <div class="flex flex-row flex-wrap gap-4">
       <div>
         原作者：
         <a
@@ -363,9 +367,23 @@ function resetBlock() {
       </div>
     </dialog> -->
     </div>
-    <div class="flex flex-row flex-wrap gap-8">
-      <div>行数：<input type="text" v-model="row" class="border-2 p-2" /></div>
-      <div>列数：<input type="text" v-model="col" class="border-2 p-2" /></div>
+    <div class="flex flex-row flex-wrap justify-center gap-6">
+      <div>
+        行数：<input
+          type="number"
+          pattern="\d*"
+          v-model="row"
+          class="border-2 p-2 max-md:max-w-16"
+        />
+      </div>
+      <div>
+        列数：<input
+          type="number"
+          pattern="\d*"
+          v-model="col"
+          class="border-2 p-2 max-md:max-w-16"
+        />
+      </div>
     </div>
     <button
       @click="confirmBoard"
@@ -385,7 +403,7 @@ function resetBlock() {
       </div>
     </div>
 
-    <div v-if="board.length" class="flex flex-col gap-4">
+    <div v-if="board.length" class="flex flex-col gap-4 max-md:text-md">
       <div class="input-table">
         <table>
           <tr>
@@ -406,21 +424,23 @@ function resetBlock() {
           <tr v-for="(_, i) in num">
             <td>
               <div class="flex w-full">
-                <div class="w-28">方块{{ i + 1 }}个数：</div>
+                <div class="w-24 max-md:w-16">方块 {{ i + 1 }}: </div>
                 <div v-if="i + 1 === 9">
                   {{ num[i] + recycledComponents.length }} =
                   <input
                     type="number"
+                    pattern="\d*"
                     v-model.number="num[i]"
-                    class="border-2 px-2 max-w-32"
+                    class="border-2 px-2 max-w-32 max-md:max-w-10"
                   />
                   + {{ recycledComponents.length }}
                 </div>
                 <div v-else>
                   <input
                     type="number"
+                    pattern="\d*"
                     v-model.number="num[i]"
-                    class="border-2 px-2 w-full max-w-32"
+                    class="border-2 px-2 w-full max-w-32 max-md:max-w-14"
                   />
                 </div>
               </div>
@@ -430,10 +450,11 @@ function resetBlock() {
                 type="checkbox"
                 v-model="selected[i]"
                 :title="'信源 ' + (i + 1) + ' 必选'"
+                class="mx-2"
               />
             </td>
             <td class="text-center">
-              <button type="button" @click="recycle(i)">🗑️ + 1</button>
+              <button type="button" @click="recycle(i)">🗑️+1</button>
             </td>
             <td class="text-center">
               {{ recycledNum[i] }}
@@ -484,7 +505,7 @@ function resetBlock() {
             <p>（或者在 <a href="https://www.bilibili.com/video/BV1hp4y1j75k/">BV1hp4y1j75k</a> 这个视频下面评论区带上出错的情况留言）</p>
           </div> -->
 
-      <div class="flex flex-row justify-between">
+      <div class="flex flex-row justify-between max-md:text-md">
         <div class="flex flex-row gap-4">
           <button
             class="bg-blue-200 px-4 py-1 rounded-md shadow-md"
@@ -514,7 +535,7 @@ function resetBlock() {
     </div>
     <div v-if="res !== null" class="flex flex-col gap-2 justify-center">
       <p>方案数：{{ res.length }}</p>
-      <p>方案数(filterd)：{{ selectResult?.length ?? 0 }} / {{ res.length }}</p>
+      <p>方案数(过滤后)：{{ selectResult?.length ?? 0 }} / {{ res.length }}</p>
     </div>
     <div
       v-if="res && res.length > 0"
@@ -522,7 +543,9 @@ function resetBlock() {
     >
       <p>当前展示方案：{{ now + 1 }} / {{ res.length }}</p>
       <p>
-        当前展示方案(filterd)：{{ now + 1 }} / {{ selectResult?.length ?? 0 }}
+        当前展示方案(过滤后)：
+        <input type="number" :value="now + 1" :min="1" :max="selectResult?.length ?? 0" @change="now = parseInt(($event?.target as HTMLInputElement)?.value) - 1" class="border-2 p-2 w-16" />
+        / {{ selectResult?.length ?? 0 }}
       </p>
       <div class="flex flex-row justify-between">
         <button

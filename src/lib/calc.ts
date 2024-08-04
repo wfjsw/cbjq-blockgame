@@ -3,6 +3,7 @@ export function solve(arr: number[][], num: number[]): Promise<number[][][]> {
 
   return new Promise((resolve) => {
     worker.onmessage = (e) => {
+      worker.terminate();
       resolve(JSON.parse(e.data));
     };
     worker.postMessage(JSON.stringify({ arr, num }));

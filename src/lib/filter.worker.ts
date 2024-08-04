@@ -16,28 +16,24 @@ function filter(
     return filtered;
   }
 
-  const sorted =
-    preferredIds.length > 0
-      ? filtered.sort((a, b) => {
-          const aPreferred = a.reduce(
-            (acc, row) =>
-              acc +
-              row
-                .map((v) => preferredIds.length - preferredIds.indexOf(v))
-                .reduce((s, c) => s + c, 0),
-            0
-          );
-          const bPreferred = b.reduce(
-            (acc, row) =>
-              acc +
-              row
-                .map((v) => preferredIds.length - preferredIds.indexOf(v))
-                .reduce((s, c) => s + c, 0),
-            0
-          );
-          return aPreferred - bPreferred;
-        })
-      : filtered;
+  const preferredIdsMap = new Map(
+    preferredIds.map((id, index) => [id, preferredIds.length - index])
+  );
+
+  const sorted = filtered.sort((a, b) => {
+    const aPreferred = a.reduce(
+      (acc, row) =>
+        acc + row.reduce((s, v) => s + (preferredIdsMap.get(v) || 0), 0),
+      0
+    );
+    const bPreferred = b.reduce(
+      (acc, row) =>
+        acc + row.reduce((s, v) => s + (preferredIdsMap.get(v) || 0), 0),
+      0
+    );
+    return bPreferred - aPreferred;
+  });
+  
   return sorted;
 }
 
