@@ -23,3 +23,7 @@ a {
         @apply scale-150;
     }
 } 
+
+a, button {
+    touch-action: manipulation;
+}
