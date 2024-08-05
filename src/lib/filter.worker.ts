@@ -33,11 +33,11 @@ function filter(
     );
     return bPreferred - aPreferred;
   });
-  
+
   return sorted;
 }
 
 onmessage = (e) => {
-    const { result, requiredIds, preferredIds } = JSON.parse(e.data);
-    postMessage(JSON.stringify(filter(result, requiredIds, preferredIds)));
+    const { result, requiredIds, preferredIds } = e.data;
+    postMessage(filter(result, requiredIds, preferredIds));
 }

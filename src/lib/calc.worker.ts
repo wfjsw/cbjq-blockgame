@@ -4,14 +4,17 @@
 
 import { Blocks } from "@/constants/blocks" with {type: 'macro'};
 
-function solve(arr: number[][], num: number[]): number[][][] {
+function solve(arr: number[][], num: number[]): { res: number[][][], incomplete: boolean } {
   const res: number[][][] = [];
   const m = arr.length;
   const n = arr[0].length;
   const a = arr.map((row) => [...row]);
   const l = [...num];
-  dfs(0, m, n, a, l, res);
-  return res;
+  const incomplete = dfs(0, m, n, a, l, res);
+  return {
+    res,
+    incomplete,
+  }
 }
 
 function canPlaceBlock(x: number, y: number, b: number, d: number, m: number, n: number, a: number[][]) {
@@ -41,7 +44,7 @@ function placeBlock(x: number, y: number, b: number, d: number, v: number, a: nu
   }
 }
 
-const MAX_DFS = 10000000;
+const MAX_DFS = 1e5;
 
 function dfs(p: number, m: number, n: number, a: number[][], l: number[], res: number[][][]) {
   if (p === m * n) {
@@ -74,7 +77,7 @@ function dfs(p: number, m: number, n: number, a: number[][], l: number[], res: n
 }
 
 onmessage = function (e) {
-    const { arr, num } = JSON.parse(e.data);
+    const { arr, num } = e.data;
     const res = solve(arr, num);
-    postMessage(JSON.stringify(res));
+    postMessage(res);
 }

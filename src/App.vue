@@ -11,6 +11,8 @@ const board = ref<number[][]>([]);
 
 const totalNum = TotalBlockNum;
 
+const loading = ref(0);
+
 const num = ref<number[]>(Array.from({ length: totalNum }, () => 0));
 // const numBackup = ref(Array.from({ length: totalNum }, () => 0));
 const solBackup = ref(Array.from({ length: totalNum }, () => 0));
@@ -21,6 +23,7 @@ const selected = ref<(number[] | null)[]>(
   Array.from({ length: totalNum }, () => null)
 );
 const res = shallowRef<number[][][] | null>(null);
+const incomplete = ref(false);
 const selectResult = shallowRef<number[][][] | null>(null);
 const now = ref(0);
 // const cache = ref(false);
@@ -47,86 +50,106 @@ function tuneBox(i: number, j: number) {
 }
 
 async function performFilter() {
-  const resolution = res.value?.slice();
-  const requiredSelection = selected.value?.slice();
-  const numList = num.value?.slice();
-  
-  if (!resolution) {
-    return;
+  loading.value++;
+  try {
+    const resolution = res.value?.slice();
+    const requiredSelection = selected.value?.slice();
+    const numList = num.value?.slice();
+
+    if (!resolution) {
+      return;
+    }
+
+    const requiredIds = requiredSelection
+      .map((v, i) => (v ? i + 1 : -1))
+      .filter((v) => v > -1);
+
+    const preferredIds = Array.from(numList.entries())
+      .map(([i, c]) => [i + 1, c]).sort((a, b) => b[1] - a[1])
+      .map(([i, _]) => i).filter(i => i !== 9);
+
+    const result = await filter(toRaw(resolution), toRaw(requiredIds), toRaw(preferredIds));
+
+    selectResult.value = result;
+  } finally {
+    loading.value--;
   }
-
-  const requiredIds = requiredSelection
-    .map((v, i) => (v ? i + 1 : -1))
-    .filter((v) => v > -1);
-
-  const preferredIds = Array.from(numList.entries())
-    .map(([i, c]) => [i + 1, c]).sort((a, b) => b[1] - a[1])
-    .map(([i, _]) => i).filter(i => i !== 9);
-
-  const result = await filter(toRaw(resolution), toRaw(requiredIds), toRaw(preferredIds));
-
-  selectResult.value = result;
 }
 
 watch(selected, performFilter, {deep: true});
 
 async function calc() {
-  const numCloned = toRaw(num.value);
-  numCloned[8] += recycledComponents.value.length;
-  res.value = await solve(board.value, numCloned);
-  now.value = 0;
-  performFilter();
-  if (res.value.length > 0) {
-    solBackup.value = [];
-    recycledComponentsBackup.value = [];
-    decreaseButtonDisabled.value = false;
-    resetDecreaseButtonDisabled.value = true;
+  loading.value++;
+  try {
+    res.value = null;
+    incomplete.value = false;
+    const numCloned = toRaw(num.value.slice());
+    numCloned[8] += recycledComponents.value.length;
+    const { res: solution, incomplete: solutionIncomplete } = await solve(toRaw(board.value), numCloned);
+    res.value = solution;
+    incomplete.value = solutionIncomplete;
+    now.value = 0;
+    performFilter();
+    if (res.value.length > 0) {
+      solBackup.value = [];
+      recycledComponentsBackup.value = [];
+      decreaseButtonDisabled.value = false;
+      resetDecreaseButtonDisabled.value = true;
+    }
+  } finally {
+    loading.value--;
   }
 }
 
 async function calcFull() {
-  // 一键回收并计算
-  // 先尝试不回收，直接计算，如果能出结果就不进行回收
-  // 如果不能出结果，计算出所有的9号回收方案，依次尝试，直到出结果为止
-  // 如果均尝试过了，但没结果，则认为无解
+  loading.value++;
 
-  // 先尝试不回收，直接计算，若有结果，直接return结束
-  await calc();
+  try {
+    // 一键回收并计算
+    // 先尝试不回收，直接计算，如果能出结果就不进行回收
+    // 如果不能出结果，计算出所有的9号回收方案，依次尝试，直到出结果为止
+    // 如果均尝试过了，但没结果，则认为无解
 
-  if (selectResult.value && selectResult.value.length > 0) {
-    return;
-  }
-
-  const allPathArr = find9All(num.value);
-
-  for (const onePath of allPathArr) {
-    for (const one9 of onePath) {
-      for (const index of one9) {
-        num.value[index]--;
-        recycledNum.value[index]++;
-      }
-
-      const one9ForView = one9.map((v) => v + 1);
-      recycledComponents.value = [...recycledComponents.value.slice(), one9ForView];
-    }
-
-    // 执行calc计算，看看有没有结果
+    // 先尝试不回收，直接计算，若有结果，直接return结束
     await calc();
 
     if (selectResult.value && selectResult.value.length > 0) {
-      // 有结果了，return结束
       return;
     }
 
-    // 无结果，恢复num，recycleNum，recycledComponents
-    for (const one9 of onePath) {
-      for (const index of one9) {
-        num.value[index]++;
-        recycledNum.value[index]--;
+    const allPathArr = find9All(num.value);
+
+    for (const onePath of allPathArr) {
+      for (const one9 of onePath) {
+        for (const index of one9) {
+          num.value[index]--;
+          recycledNum.value[index]++;
+        }
+
+        const one9ForView = one9.map((v) => v + 1);
+        recycledComponents.value = [...recycledComponents.value.slice(), one9ForView];
       }
 
-      recycledComponents.value = [];
+      // 执行calc计算，看看有没有结果
+      await calc();
+
+      if (selectResult.value && selectResult.value.length > 0) {
+        // 有结果了，return结束
+        return;
+      }
+
+      // 无结果，恢复num，recycleNum，recycledComponents
+      for (const one9 of onePath) {
+        for (const index of one9) {
+          num.value[index]++;
+          recycledNum.value[index]--;
+        }
+
+        recycledComponents.value = [];
+      }
     }
+  } finally {
+    loading.value--;
   }
 }
 
@@ -505,11 +528,17 @@ function resetBlock() {
             <p>（或者在 <a href="https://www.bilibili.com/video/BV1hp4y1j75k/">BV1hp4y1j75k</a> 这个视频下面评论区带上出错的情况留言）</p>
           </div> -->
 
+
+      <div>
+        <progress v-if="loading > 0" class="w-full" max="3" :value="loading"></progress>
+      </div>
+
       <div class="flex flex-row justify-between max-md:text-md">
         <div class="flex flex-row gap-4">
           <button
             class="bg-blue-200 px-4 py-1 rounded-md shadow-md"
             @click="calc"
+            :disabled="loading > 0"
           >
             计算完美方案
           </button>
@@ -517,6 +546,7 @@ function resetBlock() {
           <button
             class="bg-slate-200 px-4 py-1 rounded-md shadow-md"
             @click="calcFull"
+            :disabled="loading > 0"
           >
             一键回收并计算
           </button>
@@ -525,7 +555,7 @@ function resetBlock() {
         <div>
           <button
             class="bg-red-200 px-4 py-1 rounded-md shadow-md"
-            :disabled="resetRecycleButtonDisabled"
+            :disabled="resetRecycleButtonDisabled || loading > 0"
             @click="resetRecycle"
           >
             撤销所有回收
@@ -534,7 +564,7 @@ function resetBlock() {
       </div>
     </div>
     <div v-if="res !== null" class="flex flex-col gap-2 justify-center">
-      <p>方案数：{{ res.length }}</p>
+      <p>方案数：{{ res.length }} <span v-if="incomplete">+</span></p>
       <p>方案数(过滤后)：{{ selectResult?.length ?? 0 }} / {{ res.length }}</p>
     </div>
     <div

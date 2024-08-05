@@ -10,8 +10,8 @@ export function filter(
   return new Promise((resolve) => {
     worker.onmessage = (e) => {
       worker.terminate();
-      resolve(JSON.parse(e.data));
+      resolve(e.data);
     };
-    worker.postMessage(JSON.stringify({ result, requiredIds, preferredIds }));
+    worker.postMessage({ result, requiredIds, preferredIds });
   });
 }
